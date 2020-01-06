@@ -1,0 +1,112 @@
+library(shiny)
+library(tidyverse)
+
+# Source DF
+glass <- read_csv("https://archive.ics.uci.edu/ml/machine-learning-databases/glass/glass.data",
+                  col_names = c('Id', 'RIndex', 'Na', 'Mg', 'Al', 'Si', 'K',
+                                 'Ca', 'Ba', 'Fe', 'Type_of_glass')) 
+
+ui  <- fluidPage(
+        
+    # App Title ---
+    titlePanel("Glass Density Plots"),
+    
+    sidebarLayout(
+        
+        # Summary Variable Check boxes and Reactive Graphs --- !!var created
+        sidebarPanel(
+            
+            # Checkbox: Summary Variable ---
+            checkboxGroupInput("var", 
+                               h3("Variable"),
+                               choices = list('Al' = 1,
+                                              'Ba' = 2,
+                                              'Ca' = 3,
+                                              'Fe' = 4,
+                                              'K'  = 5, 
+                                              'Mg' = 6, 
+                                              'Na' = 7,
+                                              'Si' = 8 )
+                              ),
+            # Reactive Graphs --- !!selected_var created
+            renderPlot("selected_var")
+        
+        ),
+        
+        # Reactive, Isolated graphs (Checkbox + Iso. Graph) --- !* = placeholder for reactive side-by-side comparisons
+        
+        mainPanel(
+            #!!WISHLIST: drop down menu that generates the number of side-by-side plots each 
+            # with the same attribute+reactive plots as the one shown -> Loop in the server??? figure this out!
+            
+            # Checkbox: type of glass to display
+            checkboxGroupInput("glass_type",
+                               h3("Type of Glass"),
+                               choices = list('1: Building Windows, Float Processed' = 1,
+                                              '2: Building Windows, Non-float Processed' = 2 ,
+                                              '3: Vehicle Windows Float Processed' = 3,
+                                              '5: Containers' = 4,
+                                              '6: Tableware' = 5,
+                                              '7: Headlamps' = 6)
+                              ),
+            
+            helpText("Note: Glass type 4: Vehicle Windows Non-float Processed does not exist in this database."),
+            
+            # Reactive Graphs --- !!density_plot created
+            renderPlot("density_plot")
+            
+        )
+    )
+    
+) 
+
+server <- function(input, output){
+        
+        # Reactive DF for var updates
+        glass_r <- glass %>%
+                    select(Type_of_glass, input$var) %>%
+                    ifelse(input$glass_type > 0, 
+                       filter(Type_of_glass %in% c(input$glass_type)))
+    
+        # Output Summary Variable Graph ---
+        output$selected_var <- renderPlot({
+            
+            #ggplot      
+            glass_r %>%        
+            select(-RIndex) %>%
+            select(-Id) %>%
+            gather(key = 'category', value = 'value', -Type_of_glass) %>%
+            
+            ggplot(aes(value, ..scaled.., fill = Type_of_glass)) +
+               geom_density(alpha = 0.4, colour = 'white') +
+               facet_wrap(~ category, scales = 'free') +
+               labs(fill = "Type of Glass",
+                    x = 'Relative Weight % (Oxides)',
+                    y = 'Density',
+                    title = 'Figure 2: Density distribution of scaled glass types by oxide content') +
+               theme_linedraw() +
+               scale_x_continuous(labels = scales::number_format(accuracy = 0.01))+
+               scale_y_continuous(labels = scales::number_format(accuracy = 0.1))
+        })
+    
+        # Output: Density Plot --- 
+        output$glass_type  <-  renderPlot({ 
+            glass_r %>%        
+            select(-Id) %>%
+            gather(key = 'category', value = 'value', -Type_of_glass) %>%
+            
+            ggplot(aes(value, ..scaled.., fill = Type_of_glass)) +
+               geom_density(alpha = 0.4, colour = 'white') +
+               facet_wrap(~ category, scales = 'free') +
+               labs(fill = "Type of Glass",
+                    x = 'Relative Weight % (Oxides)',
+                    y = 'Density',
+                    title = 'Figure 2: Density distribution of scaled glass types by oxide content') +
+               theme_linedraw() +
+               scale_x_continuous(labels = scales::number_format(accuracy = 0.01))+
+               scale_y_continuous(labels = scales::number_format(accuracy = 0.1))
+        })
+}
+
+
+shinyApp(ui = ui, server = server)
