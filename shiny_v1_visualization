@@ -1,0 +1,42 @@
+library(tidyverse)
+
+glass <- read_csv("https://archive.ics.uci.edu/ml/machine-learning-databases/glass/glass.data",
+                  col_names = c('Id', 'RIndex', 'Na', 'Mg', 'Al', 'Si', 'K',
+                                 'Ca', 'Ba', 'Fe', 'Type_of_glass')) %>%
+                  select(-RIndex)
+
+
+glass <- mutate(glass, Type_of_glass = as.factor(Type_of_glass))
+
+
+glass_name <- data.frame('Type_of_glass'= c(1:6),
+                         'name' = c('Building_windows_float_processed',
+                                     'Building_windows_non_float_processed',
+                                     'Vehicle_windows_float_processed',
+                                     'Containers',
+                                     'Tableware',
+                                     'Headlamps'
+                                     )
+                        )
+
+options(repr.plot.width = 12, repr.plot.height = 10)
+
+freq_glass <- glass %>%
+              select(-Id) %>%
+              filter(Type_of_glass == 1) %>%
+              select(Al, Type_of_glass) %>%
+              gather(key = 'category', value = 'value', -Type_of_glass) %>%
+                 ggplot(aes(value, ..scaled.., fill = Type_of_glass)) +
+                   geom_density(alpha = 0.4, colour = 'white') +
+                   facet_wrap(~ category, scales = 'free') +
+                   labs(fill = "Type of Glass",
+                        x = 'Relative Weight % (Oxides)',
+                        y = 'Density',
+                        title = 'Figure 2: Density distribution of scaled glass types by oxide content') +
+                   theme_linedraw() +
+                   scale_x_continuous(labels = scales::number_format(accuracy = 0.01))+
+                   scale_y_continuous(labels = scales::number_format(accuracy = 0.1))
+
+freq_glass
+
+head(glass) %>% filter(Type_of_glass == 1)
